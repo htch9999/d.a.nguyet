@@ -316,34 +316,64 @@
             animation-delay: 0.7s;
         }
 
+        /* Update the spiral-arrow and arrow-text styles */
         .spiral-arrow {
             position: absolute;
-            top: 350px;
-            left: calc(50% + var(--env-width) / 2 + 50px);
-            width: 100px;
-            height: 86px;
-            transform: rotate(-20deg);
+            width: min(100px, 15vw);
+            height: min(86px, 13vw);
+            top: 50%;
+            left: calc(50% + var(--env-width)/2 + min(50px, 8vw));
+            transform: translateY(-50%) rotate(-20deg);
             fill: #ff6b81;
             z-index: 10;
             opacity: 1;
-            transition: opacity 0.5s ease;
+            transition: all 0.5s ease;
+            pointer-events: none;
         }
 
         .arrow-text {
             position: absolute;
-            top: 380px;
-            left: calc(50% + var(--env-width) / 2 + 150px);
-            font-size: 20px;
+            top: 50%;
+            left: calc(50% + var(--env-width)/2 + min(150px, 25vw));
+            transform: translateY(-50%);
+            font-size: min(20px, 4vw);
             color: #ff6b81;
-            font-family: 'Dancing Script', cursive;
-            font-weight: 600;
+            white-space: nowrap;
             z-index: 10;
             opacity: 1;
-            transition: opacity 0.5s ease;
-            user-select: none; /* Ngăn bôi đen văn bản */
-            -webkit-user-select: none; /* Hỗ trợ trình duyệt Webkit (Safari, Chrome) */
-            -moz-user-select: none; /* Hỗ trợ Firefox */
-            -ms-user-select: none; /* Hỗ trợ IE/Edge */
+            transition: all 0.5s ease;
+            pointer-events: none;
+        }
+
+        /* Add these new styles for open state */
+        .open .spiral-arrow {
+            transform: translateY(calc(-50% - var(--env-height)/3)) rotate(-20deg);
+        }
+
+        .open .arrow-text {
+            transform: translateY(calc(-50% - var(--env-height)/3));
+        }
+
+        /* Update zoom state */
+        .zoom .spiral-arrow,
+        .zoom .arrow-text {
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.4s ease;
+        }
+
+        /* Update media query for landscape orientation */
+        @media screen and (orientation: landscape) {
+            .spiral-arrow, .arrow-text {
+                transition: transform 0.4s ease, opacity 0.5s ease;
+            }
+            
+            .open .spiral-arrow {
+                transform: translateY(calc(-50% - var(--env-height)/3)) rotate(-20deg);
+            }
+            
+            .open .arrow-text {
+                transform: translateY(calc(-50% - var(--env-height)/3));
+            }
         }
 
         /* Khi zoom: ẩn cả mũi tên và chữ */
@@ -407,32 +437,31 @@
             100% { transform: rotate(90deg); }
         }
 
-        /* Responsive adjustments */
+        /* Update media queries for better mobile zoom scaling */
         @media screen and (max-width: 768px) {
-            .words.line1 { font-size: 1em; }
-            .words.line2 { font-size: 0.8em; }
-            .words.line3 { font-size: 0.8em; }
-            
-            .arrow-text {
-                font-size: 16px;
-                left: calc(50% + var(--env-width) / 2 + 80px);
-            }
-            
-            .spiral-arrow {
-                width: 60px;
-                height: 52px;
-                left: calc(50% + var(--env-width) / 2 + 20px);
-            }
-
             .zoom .letter {
-                transform: scale(2) translateY(calc(-1 * (var(--env-height) / 30))) rotate(-5deg);
+                transform: scale(1.5) translateY(calc(-1 * (var(--env-height) / 30))) rotate(-5deg);
             }
         }
 
-        @media screen and (max-width: 480px) {
-            .words.line1 { font-size: 0.8em; }
-            .words.line2 { font-size: 0.6em; }
-            .words.line3 { font-size: 0.6em; }
+        @media screen and (max-width: 480px) and (orientation: landscape) {
+            :root {
+                --env-width: min(240px, 70vw);
+                --env-height: min(150px, 40vw);
+            }
+
+            .zoom .letter {
+                /* Smaller scale for mobile devices */
+                transform: scale(1.2) translateY(calc(-1 * (var(--env-height) / 30))) rotate(-5deg);
+            }
+        }
+
+        /* Add new media query for very small devices */
+        @media screen and (max-width: 360px) and (orientation: landscape) {
+            .zoom .letter {
+                /* Even smaller scale for very small devices */
+                transform: scale(1) translateY(calc(-1 * (var(--env-height) / 30))) rotate(-5deg);
+            }
         }
 
         /* Portrait orientation check */
@@ -483,8 +512,11 @@
     <script>
         $(document).ready(function () {
             var envelope = $('#envelope');
-            var wrapper = $('.envlope-wrapper'); // Thêm tham chiếu đến wrapper
+            var wrapper = $('.envlope-wrapper');
             var clickCount = 0;
+            
+            // Keep track of current scale for smooth transition
+            var currentScale = 1;
     
             envelope.on('click', function () {
                 clickCount++;
@@ -506,19 +538,59 @@
     
             function zoomLetter() {
                 envelope.addClass("zoom");
-                wrapper.addClass("zoom"); // Thêm lớp zoom vào wrapper
+                wrapper.addClass("zoom");
+                
+                const viewportHeight = window.innerHeight;
+                const viewportWidth = window.innerWidth;
+                const letterHeight = $('.letter').height();
+                const letterWidth = $('.letter').width();
+                
+                let baseScale = Math.min(
+                    (viewportHeight * 0.8) / letterHeight,
+                    (viewportWidth * 0.8) / letterWidth
+                );
+                
+                let finalScale = baseScale;
+                if (viewportWidth <= 360) {
+                    finalScale = Math.min(baseScale, 1.0);
+                } else if (viewportWidth <= 480) {
+                    finalScale = Math.min(baseScale, 1.2);
+                } else if (viewportWidth <= 768) {
+                    finalScale = Math.min(baseScale, 1.5);
+                } else {
+                    finalScale = Math.min(baseScale, 2.0);
+                }
+                
+                currentScale = finalScale; // Save current scale
+                
+                $('.zoom .letter').css({
+                    'transform': `scale(${finalScale}) translateY(calc(-1 * (var(--env-height) / 30))) rotate(-5deg)`,
+                    'transition': 'transform 0.5s ease-in-out'
+                });
             }
     
             function normalizeLetter() {
-                envelope.removeClass("zoom");
-                wrapper.removeClass("zoom"); // Xóa lớp zoom khỏi wrapper
+                // First update CSS for smooth transition back
+                $('.letter').css({
+                    'transform': 'scale(1) translateY(0) rotate(0)',
+                    'transition': 'transform 0.5s ease-in-out'
+                });
+                
+                // Remove zoom classes after transition
+                setTimeout(() => {
+                    envelope.removeClass("zoom");
+                    wrapper.removeClass("zoom");
+                }, 500);
             }
     
             function closeEnvelope() {
                 envelope.addClass("close").removeClass("open zoom");
-                wrapper.removeClass("zoom"); // Xóa lớp zoom khỏi wrapper
+                wrapper.removeClass("zoom");
+                $('.letter').css({
+                    'transform': '',
+                    'transition': ''
+                });
             }
-
 
             window.addEventListener('orientationchange', function() {
             setTimeout(function() {
@@ -529,26 +601,14 @@
                     $('.orientation-warning').css('display', 'none');
                     $('.envlope-wrapper').show();
                 }
+                
+                // Re-calculate zoom if letter is currently zoomed
+                if (envelope.hasClass('zoom')) {
+                    zoomLetter();
+                }
             }, 100);
-
-            function zoomLetter() {
-            envelope.addClass("zoom");
-            wrapper.addClass("zoom");
-            
-            // Calculate optimal zoom scale based on viewport
-            const viewportHeight = window.innerHeight;
-            const letterHeight = $('.letter').height();
-            const optimalScale = Math.min(3.5, (viewportHeight * 0.9) / letterHeight);
-            
-            // Apply optimal scale
-            $('.zoom .letter').css('transform', 
-                `scale(${optimalScale}) 
-                translateY(calc(-1 * (var(--env-height) / 30))) 
-                rotate(-5deg)`
-            );
-        }
         });
-        });
+    });
     </script>
 </body>
 
