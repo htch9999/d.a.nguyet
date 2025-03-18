@@ -552,13 +552,13 @@
                 
                 let finalScale = baseScale;
                 if (viewportWidth <= 360) {
-                    finalScale = Math.min(baseScale, 1.0);
-                } else if (viewportWidth <= 480) {
                     finalScale = Math.min(baseScale, 1.2);
-                } else if (viewportWidth <= 768) {
+                } else if (viewportWidth <= 480) {
                     finalScale = Math.min(baseScale, 1.5);
-                } else {
+                } else if (viewportWidth <= 768) {
                     finalScale = Math.min(baseScale, 2.0);
+                } else {
+                    finalScale = Math.min(baseScale, 3.0);
                 }
                 
                 currentScale = finalScale; // Save current scale
